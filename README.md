@@ -2,6 +2,10 @@
 
 A web app to allow youth groups to send leaders off with groups of kids to solve riddles to unlock photo scavenger hunt opportunities. I.e. a modern "chalk chase". Saves leaders from transferring photos from a number of devices with various picture formats + makes it more interactive and fun.
 
+<p align="center">
+  <img width="300" src="https://github.com/Harrison-Mitchell/Photo-Scavenger-Hunt/assets/17722100/ecbf3737-23d1-4a0f-9921-a4c109c107d7">
+</p>
+
 ## Gameplay
 
 - Teams must solve (get within 10 metres of) an initial riddle (which leads to a location) to unlock a bank of 10 photo scavenger hunt challenges
