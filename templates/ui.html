@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📷 Photo Scavenger Hunt</title>
+    <style>
+        html, body {
+            font-family: sans-serif;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+        .col-square {
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .submission {
+            width: 90%;
+        }
+        li {
+            margin: 10px 0;
+        }
+        form {
+            display: inline-block;
+            vertical-align: text-top;
+        }
+        label {
+            padding: 2px 4px;
+            border: 1px solid grey;
+            border-radius: 5px;
+        }
+        #info {
+            background-color: lightcyan;
+            border: 3px solid lightskyblue;
+            width: 100%;
+            padding: 3px;
+        }
+        #container {
+            padding: 0 10px;
+        }
+        pre {
+            font-size: 14px;
+            max-width: 100%;
+            overflow-x: scroll
+        }
+    </style>
+</head>
+<body>
+    <!-- Update me as you please! To hide the status box: change block to none -->
+    <div id="info" style="display:block">ℹ️ 30 min left</div>
+
+    <div id="container">
+        <!-- If we have 3 or less challenges, show the riddle to allow the team to unlock more -->
+        {% if curChallenges|length <= 3 and curRiddle.id != 0 %}
+        <h2 id="riddle">Riddle</h2>
+        <pre>{{ curRiddle.text }}</pre>
+        {% endif %}
+
+        <!-- If we're not on the initial riddle, show challenges -->
+        {% if curRiddle.id != 1 %}
+        <h2>Take a photo with...</h2>
+        <ul>
+            {% for challenge in curChallenges %}
+                <li>
+                    <form action="submit/{{ leader }}/{{ challenge.id }}" method="post" enctype="multipart/form-data">
+                        {{ challenge.text }}
+                        <!-- Inline picture taking to keep it formatted and inline and keep photos off phones -->
+                        <input id="file-{{ challenge.id }}" type="file" name="image" accept="image/*" capture="camera" required onchange="form.submit()">
+                        <label for="file-{{ challenge.id }}" class="upload">📷</label>
+                    </form>
+                </li>
+            {% endfor %}
+            {% if not curChallenges %}
+                <li><i>OUT OF CHALLENGES!</i></li>
+            {% endif %}
+        </ul>
+        {% endif %}
+
+        {% if submissions %}
+        <h2>Submissions</h2>
+        <ol>
+            {% for submission in submissions %}
+                <li>
+                    <details>
+                        <summary>
+                            <form action="delete/{{ leader }}/{{ submission.id }}" method="post">
+                                {{ submission.text }}
+                                <button type="submit">❌</button>
+                            </form>
+                        </summary>
+                        <!-- Save bandwidth and only download image when requested -->
+                        <img class="submission" loading="lazy" src="uploads/{{ leader }}_{{ submission.id }}" alt="Submission" width="400px">
+                    </details>
+                </li>
+            {% endfor %}
+        </ol>
+        {% endif %}
+    </div>
+
+    <script>
+        // Calculate distance between two lat/lngs "as the crow flies"
+        function calcCrow(lat1, lon1, lat2, lon2) {
+            var R = 6371; // km
+            var dLat = (lat2-lat1) * Math.PI / 180;
+            var dLon = (lon2-lon1) * Math.PI / 180;
+            var lat1 = (lat1) * Math.PI / 180;
+            var lat2 = (lat2) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            var d = R * c;
+            return d * 1000; // And return the distance in meters
+        }
+
+        // Fetch location every second helper function
+        function logCoordinates() {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const { latitude, longitude } = position.coords;
+                dist = calcCrow(latitude, longitude, {{ curRiddle.latlng[0] }}, {{ curRiddle.latlng[1] }})
+                document.getElementById("riddle").innerText = "Riddle - " + Math.ceil(dist) + "m"
+
+                // If the team is less than 10 meters away from the riddle location, mark it as solved
+                if (dist <= 11) {
+                    fetch("riddle/{{ leader }}/{{ curRiddle.id }}", {
+                        method: 'POST',
+                    })
+                    .then(response => {
+                        window.location = window.location
+                    })
+                }
+            }, function(error) {
+                // In theory shouldn't fire because location worked for the preflight check
+                console.error(`Error getting coordinates: ${error.message}`);
+            }, {
+                // High accuracy location please
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0,
+            });
+        }
+
+        // Only do location stuff if there's an active riddle
+        if (document.getElementById("riddle")) {
+            // Do an initial location request to ensure perms are good and approved
+            navigator.geolocation.getCurrentPosition(function(position) {
+                // We can get lat lng, great! Now refresh it every second
+                setInterval(logCoordinates, 1000)
+            }, function(error) {
+                // If we can't fetch location, warn. Normally some permission issue
+                // IOS defaults to block all Safari location requests?
+                alert("Can't use location! - Are location permissions denied?", error, error.message)
+            }, {
+                // High accuracy location please
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0,
+            });
+        }
+    </script>
+</body>
+</html>
